@@ -1,0 +1,58 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+def scoresfixtures(link, ids, output_file='output.xlsx'):
+    '''
+    Description: This function picks all the games in one season and combines all links into one specific list,
+                 then saves the data to an Excel file.
+    
+    Inputs:
+        - link: The link of the main page that has all season games desired.
+        - ids: The ID of the championship table.
+        - output_file: The name of the output Excel file (default is 'output.xlsx').
+        
+    Outputs:
+        - An Excel file containing the data.
+    '''
+    
+    # Request the content of the webpage
+    req = requests.get(link)
+    if req.status_code == 200:
+        content = req.content
+    else:
+        raise Exception(f"Failed to retrieve content from {link}. Status code: {req.status_code}")
+
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(content, 'html.parser')
+    tb = soup.find(id=ids)
+    
+    if not tb:
+        raise Exception(f"Table with ID {ids} not found.")
+
+    rows = tb.find_all("tr")
+    data = []
+
+    # Extract data from each row
+    for row in rows:
+        cols = row.find_all(['th', 'td'])
+        cols = [col.get_text(strip=True) for col in cols]
+        data.append(cols)
+    
+    # Create a DataFrame from the extracted data
+    headers = ["Date", "Start Time", "Competition", "Round", "Day of Week", "Venue", "Result", 
+               "Goals For", "Goals Against", "Opponent", "xG For", "xG Against", "Possession", 
+               "Attendance", "Captain", "Formation", "Referee", "Match Report", "Notes"]
+    
+    df = pd.DataFrame(data, columns=headers)
+    
+    # Save the DataFrame to an Excel file
+    df.to_excel(output_file, index=False, engine='openpyxl')
+
+    print(f"Data has been written to {output_file}")
+
+# Example usage
+link = 'https://fbref.com/en/squads/c7a9f859/2023-2024/all_comps/Bayer-Leverkusen-Stats-All-Competitions'  # Replace with the actual URL
+ids = 'div_matchlogs_for'  # Replace with the actual ID
+output_file = "match_reports.xlsx"  # Replace with the desired output file name
+scoresfixtures(link, ids, output_file)
